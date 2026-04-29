@@ -38,8 +38,21 @@ class LogStore:
         Path(path).write_text(json.dumps(data, indent=2), encoding="utf-8")
 
     def load_from_file(self, path: str) -> None:
-        """Load log entries from a JSON file."""
-        raw = json.loads(Path(path).read_text(encoding="utf-8"))
+        """Load log entries from a JSON file, replacing any existing entries.
+
+        Raises:
+            FileNotFoundError: If the specified path does not exist.
+            ValueError: If the file content is not valid JSON or has unexpected structure.
+        """
+        file_path = Path(path)
+        if not file_path.exists():
+            raise FileNotFoundError(f"Log file not found: {path}")
+        try:
+            raw = json.loads(file_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid JSON in log file '{path}': {exc}") from exc
+        if not isinstance(raw, list):
+            raise ValueError(f"Expected a JSON array in '{path}', got {type(raw).__name__}")
         for item in raw:
             req_data = item["request"]
             request = HttpRequest(
