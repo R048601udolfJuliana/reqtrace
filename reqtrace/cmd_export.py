@@ -9,6 +9,17 @@ from reqtrace.exporter import export_curl, export_json
 from reqtrace.storage import LogStore
 
 
+def _write_output(content: str, path: str) -> bool:
+    """Write *content* to *path*; return True on success, False on OSError."""
+    try:
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(content)
+        return True
+    except OSError as exc:
+        print(f"Failed to write file: {exc}", file=sys.stderr)
+        return False
+
+
 def cmd_export(args: Namespace, store: LogStore) -> int:
     """Export entries from the store to the requested format.
 
@@ -31,29 +42,20 @@ def cmd_export(args: Namespace, store: LogStore) -> int:
     if fmt == "json":
         output = export_json(entries)
         if args.output:
-            try:
-                with open(args.output, "w", encoding="utf-8") as fh:
-                    fh.write(output)
-                print(f"Exported {len(entries)} entry/entries to {args.output}")
-            except OSError as exc:
-                print(f"Failed to write file: {exc}", file=sys.stderr)
+            if not _write_output(output, args.output):
                 return 1
+            print(f"Exported {len(entries)} entry/entries to {args.output}")
         else:
             print(output)
 
     elif fmt == "curl":
-        lines = export_curl(entries)
+        output = "\n".join(export_curl(entries)) + "\n"
         if args.output:
-            try:
-                with open(args.output, "w", encoding="utf-8") as fh:
-                    fh.write("\n".join(lines) + "\n")
-                print(f"Exported {len(entries)} entry/entries to {args.output}")
-            except OSError as exc:
-                print(f"Failed to write file: {exc}", file=sys.stderr)
+            if not _write_output(output, args.output):
                 return 1
+            print(f"Exported {len(entries)} entry/entries to {args.output}")
         else:
-            for line in lines:
-                print(line)
+            print(output, end="")
     else:
         print(f"Unknown format '{fmt}'. Use 'json' or 'curl'.", file=sys.stderr)
         return 1
