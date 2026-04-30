@@ -1,75 +1,53 @@
-"""In-memory and file-based storage for request log entries."""
+"""In-memory log store for HTTP request/response entries."""
 
-import json
-from pathlib import Path
-from typing import List, Optional
+from __future__ import annotations
 
-from reqtrace.models import HttpRequest, HttpResponse, RequestLogEntry
+from typing import Callable, Iterator, Optional
+
+from reqtrace.models import RequestLogEntry
 
 
 class LogStore:
-    """Stores and retrieves HTTP request log entries."""
+    """Thread-unsafe in-memory store for RequestLogEntry objects."""
 
     def __init__(self) -> None:
-        self._entries: List[RequestLogEntry] = []
+        self._entries: dict[str, RequestLogEntry] = {}
+        self._order: list[str] = []
 
     def add(self, entry: RequestLogEntry) -> None:
-        """Append a new log entry."""
-        self._entries.append(entry)
+        """Add a new entry; raises ValueError if ID already exists."""
+        if entry.id in self._entries:
+            raise ValueError(f"Entry with id {entry.id!r} already exists")
+        self._entries[entry.id] = entry
+        self._order.append(entry.id)
 
-    def get_by_id(self, request_id: str) -> Optional[RequestLogEntry]:
-        """Find an entry by its request ID."""
-        for entry in self._entries:
-            if entry.request.request_id == request_id:
-                return entry
-        return None
+    def get_by_id(self, entry_id: str) -> Optional[RequestLogEntry]:
+        """Return entry by ID or None."""
+        return self._entries.get(entry_id)
 
-    def all(self) -> List[RequestLogEntry]:
-        """Return all stored entries."""
-        return list(self._entries)
+    def all(self) -> list[RequestLogEntry]:
+        """Return all entries in insertion order."""
+        return [self._entries[eid] for eid in self._order]
 
-    def clear(self) -> None:
-        """Remove all stored entries."""
-        self._entries.clear()
+    def update(self, entry: RequestLogEntry) -> None:
+        """Replace an existing entry in-place; raises KeyError if not found."""
+        if entry.id not in self._entries:
+            raise KeyError(f"Entry not found: {entry.id!r}")
+        self._entries[entry.id] = entry
 
-    def save_to_file(self, path: str) -> None:
-        """Persist log entries to a JSON file."""
-        data = [entry.to_dict() for entry in self._entries]
-        Path(path).write_text(json.dumps(data, indent=2), encoding="utf-8")
+    def delete(self, entry_id: str) -> None:
+        """Remove an entry by ID; raises KeyError if not found."""
+        if entry_id not in self._entries:
+            raise KeyError(f"Entry not found: {entry_id!r}")
+        del self._entries[entry_id]
+        self._order.remove(entry_id)
 
-    def load_from_file(self, path: str) -> None:
-        """Load log entries from a JSON file, replacing any existing entries.
+    def filter(self, predicate: Callable[[RequestLogEntry], bool]) -> list[RequestLogEntry]:
+        """Return entries matching predicate."""
+        return [e for e in self.all() if predicate(e)]
 
-        Raises:
-            FileNotFoundError: If the specified path does not exist.
-            ValueError: If the file content is not valid JSON or has unexpected structure.
-        """
-        file_path = Path(path)
-        if not file_path.exists():
-            raise FileNotFoundError(f"Log file not found: {path}")
-        try:
-            raw = json.loads(file_path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            raise ValueError(f"Invalid JSON in log file '{path}': {exc}") from exc
-        if not isinstance(raw, list):
-            raise ValueError(f"Expected a JSON array in '{path}', got {type(raw).__name__}")
-        for item in raw:
-            req_data = item["request"]
-            request = HttpRequest(
-                method=req_data["method"],
-                url=req_data["url"],
-                headers=req_data.get("headers", {}),
-                body=req_data["body"].encode("utf-8") if req_data.get("body") else None,
-                query_params=req_data.get("query_params", {}),
-                request_id=req_data["request_id"],
-            )
-            response = None
-            if item.get("response"):
-                res_data = item["response"]
-                response = HttpResponse(
-                    status_code=res_data["status_code"],
-                    headers=res_data.get("headers", {}),
-                    body=res_data["body"].encode("utf-8") if res_data.get("body") else None,
-                    elapsed_ms=res_data.get("elapsed_ms", 0.0),
-                )
-            self._entries.append(RequestLogEntry(request=request, response=response))
+    def __len__(self) -> int:
+        return len(self._entries)
+
+    def __iter__(self) -> Iterator[RequestLogEntry]:
+        return iter(self.all())
