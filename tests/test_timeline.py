@@ -40,6 +40,10 @@ class TestSortEntries:
     def test_empty_list(self):
         assert sort_entries([]) == []
 
+    def test_single_entry_unchanged(self):
+        e = _make_entry("only", "2024-01-01T10:00:00Z")
+        assert sort_entries([e]) == [e]
+
 
 class TestBucketByMinute:
     def test_same_minute_grouped(self):
@@ -57,6 +61,14 @@ class TestBucketByMinute:
 
     def test_empty_returns_empty_dict(self):
         assert bucket_by_minute([]) == {}
+
+    def test_bucket_key_format(self):
+        """Bucket keys should be truncated to minute precision (no seconds)."""
+        e = _make_entry("a", "2024-06-20T14:55:30Z")
+        buckets = bucket_by_minute([e])
+        keys = list(buckets.keys())
+        assert len(keys) == 1
+        assert keys[0] == "2024-06-20T14:55"
 
 
 class TestFormatTimeline:
@@ -88,4 +100,4 @@ class TestFormatTimeline:
         e1 = _make_entry("first", "2024-01-01T10:00:00Z")
         e2 = _make_entry("second", "2024-01-01T11:00:00Z")
         output = format_timeline([e1, e2], descending=True)
-        assert output.index("2024-01-01T11:00") < output.index("2024-01-01T10:00")
+        assert output.index("second") < output.index("first")
