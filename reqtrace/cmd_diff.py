@@ -7,7 +7,14 @@ from reqtrace.storage import LogStore
 
 
 def cmd_diff(args, store: Optional[LogStore] = None) -> None:
-    """Compare two stored log entries by ID and print a human-readable diff."""
+    """Compare two stored log entries by ID and print a human-readable diff.
+
+    Args:
+        args: Parsed CLI arguments with ``id_a`` and ``id_b`` attributes
+              identifying the two log entries to compare.
+        store: Optional :class:`~reqtrace.storage.LogStore` instance.  When
+               *None* a default store is created automatically.
+    """
     if store is None:  # pragma: no cover
         store = LogStore()
 
