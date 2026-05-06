@@ -1,5 +1,6 @@
 """Statistics and summary reporting for logged HTTP requests."""
 from collections import Counter
+from urllib.parse import urlparse
 from typing import List, Dict, Any
 from reqtrace.models import RequestLogEntry
 
@@ -26,7 +27,6 @@ def compute_stats(entries: List[RequestLogEntry]) -> Dict[str, Any]:
         req = entry.request
         methods[req.method.upper()] += 1
 
-        from urllib.parse import urlparse
         parsed = urlparse(req.url)
         host = parsed.netloc or parsed.path
         hosts[host] += 1
@@ -68,3 +68,17 @@ def format_stats(stats: Dict[str, Any]) -> str:
         "Hosts          : " + ", ".join(f"{k}={v}" for k, v in stats["hosts"].items()),
     ]
     return "\n".join(lines)
+
+
+def top_hosts(stats: Dict[str, Any], n: int = 5) -> List[tuple]:
+    """Return the top N hosts by request count.
+
+    Args:
+        stats: A stats dictionary as returned by ``compute_stats``.
+        n: Maximum number of hosts to return (default 5).
+
+    Returns:
+        A list of ``(host, count)`` tuples sorted by count descending.
+    """
+    sorted_hosts = sorted(stats["hosts"].items(), key=lambda item: item[1], reverse=True)
+    return sorted_hosts[:n]
