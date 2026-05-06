@@ -78,3 +78,15 @@ def assert_entry(
             )
 
     return result
+
+
+def assert_entries(
+    entries: List[RequestLogEntry],
+    **kwargs: Any,
+) -> List[AssertionResult]:
+    """Run :func:`assert_entry` against a list of entries with the same expectations.
+
+    Returns a list of :class:`AssertionResult` objects, one per entry.
+    Useful for batch-validating all logged requests in a test session.
+    """
+    return [assert_entry(entry, **kwargs) for entry in entries]
