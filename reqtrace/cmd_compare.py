@@ -8,19 +8,8 @@ from reqtrace.compare import compare_entries
 from reqtrace.storage import LogStore
 
 
-def cmd_compare(args: argparse.Namespace, store: LogStore) -> None:
-    entry_a = store.get_by_id(args.id_a)
-    if entry_a is None:
-        print(f"Entry not found: {args.id_a}")
-        return
-
-    entry_b = store.get_by_id(args.id_b)
-    if entry_b is None:
-        print(f"Entry not found: {args.id_b}")
-        return
-
-    result = compare_entries(entry_a, entry_b)
-
+def _print_comparison_table(entry_a, entry_b, result) -> None:
+    """Print a formatted comparison table for two log entries."""
     ra, rb = entry_a.request, entry_b.request
 
     print(f"{'Field':<12}  {'Entry A':<35}  {'Entry B':<35}  {'Score':>6}")
@@ -33,6 +22,22 @@ def cmd_compare(args: argparse.Namespace, store: LogStore) -> None:
     print(f"{'body':<12}  {body_a:<35}  {body_b:<35}  {result.field_scores['body']:>6.0%}")
     print("-" * 95)
     print(result.summary)
+
+
+def cmd_compare(args: argparse.Namespace, store: LogStore) -> None:
+    """Compare two stored log entries by ID and print a similarity report."""
+    entry_a = store.get_by_id(args.id_a)
+    if entry_a is None:
+        print(f"Entry not found: {args.id_a}")
+        return
+
+    entry_b = store.get_by_id(args.id_b)
+    if entry_b is None:
+        print(f"Entry not found: {args.id_b}")
+        return
+
+    result = compare_entries(entry_a, entry_b)
+    _print_comparison_table(entry_a, entry_b, result)
 
 
 def add_compare_subcommand(subparsers: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
