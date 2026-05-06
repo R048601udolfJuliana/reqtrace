@@ -14,19 +14,26 @@ def cmd_diff(args, store: Optional[LogStore] = None) -> None:
               identifying the two log entries to compare.
         store: Optional :class:`~reqtrace.storage.LogStore` instance.  When
                *None* a default store is created automatically.
+
+    Raises:
+        SystemExit: Exits with code 1 if either entry cannot be found.
     """
     if store is None:  # pragma: no cover
         store = LogStore()
 
+    missing = []
     left = store.get_by_id(args.id_a)
     right = store.get_by_id(args.id_b)
 
     if left is None:
-        print(f"Entry not found: {args.id_a}")
-        return
+        missing.append(args.id_a)
     if right is None:
-        print(f"Entry not found: {args.id_b}")
-        return
+        missing.append(args.id_b)
+
+    if missing:
+        for entry_id in missing:
+            print(f"Entry not found: {entry_id}")
+        raise SystemExit(1)
 
     result = diff_entries(left, right)
     print(result.summary())
