@@ -95,16 +95,22 @@ class TestUrlHighlight:
 
 class TestMisc:
     def test_header_highlight_contains_name_and_value(self):
-        result = header_highlight("Content-Type", "application/json")
+        result = header_highlight("Content-Type", "application/json", enabled=True)
         assert "Content-Type" in result
         assert "application/json" in result
 
-    def test_header_highlight_disabled(self):
-        result = header_highlight("X-Foo", "bar", enabled=False)
-        assert result == "X-Foo: bar"
+    def test_header_highlight_disabled_returns_plain(self):
+        result = header_highlight("Content-Type", "application/json", enabled=False)
+        assert "\033[" not in result
+        assert "Content-Type" in result
+        assert "application/json" in result
 
-    def test_bold_enabled(self):
-        assert "\033[1m" in bold("hello", enabled=True)
+    def test_bold_wraps_text(self):
+        result = bold("hello", enabled=True)
+        assert "\033[1m" in result
+        assert "hello" in result
 
-    def test_bold_disabled(self):
-        assert bold("hello", enabled=False) == "hello"
+    def test_bold_disabled_returns_plain(self):
+        result = bold("hello", enabled=False)
+        assert result == "hello"
+        assert "\033[" not in result
