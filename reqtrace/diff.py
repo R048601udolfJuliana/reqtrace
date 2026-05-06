@@ -34,6 +34,10 @@ class EntryDiff:
             lines.append(str(d))
         return "\n".join(lines)
 
+    def fields_with_differences(self) -> List[str]:
+        """Return a list of field names that have differences."""
+        return [d.field for d in self.diffs]
+
 
 def _compare_requests(left: RequestLogEntry, right: RequestLogEntry) -> List[FieldDiff]:
     diffs: List[FieldDiff] = []
@@ -75,3 +79,20 @@ def diff_entries(left: RequestLogEntry, right: RequestLogEntry) -> EntryDiff:
     """Return an EntryDiff describing differences between two log entries."""
     diffs = _compare_requests(left, right) + _compare_responses(left, right)
     return EntryDiff(left_id=left.id, right_id=right.id, diffs=diffs)
+
+
+def diff_entries_by_field(
+    left: RequestLogEntry, right: RequestLogEntry, fields: List[str]
+) -> EntryDiff:
+    """Return an EntryDiff restricted to the specified field names.
+
+    Args:
+        left: The first log entry to compare.
+        right: The second log entry to compare.
+        fields: A list of field names to include in the diff (e.g. ``["method",
+            "response.status_code"]``). Diffs for fields not in this list are
+            excluded from the result.
+    """
+    full_diff = diff_entries(left, right)
+    filtered = [d for d in full_diff.diffs if d.field in fields]
+    return EntryDiff(left_id=left.id, right_id=right.id, diffs=filtered)
