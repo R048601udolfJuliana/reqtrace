@@ -50,3 +50,26 @@ def list_all_tags(store: LogStore) -> List[str]:
     for entry in store.all():
         tags.update(entry.tags)
     return sorted(tags)
+
+
+def rename_tag(store: LogStore, old_tag: str, new_tag: str) -> int:
+    """Rename a tag across all entries.
+
+    Replaces every occurrence of ``old_tag`` with ``new_tag`` in all log
+    entries.  If an entry already has ``new_tag``, the old tag is simply
+    removed to avoid duplicates.
+
+    Returns the number of entries that were updated.
+    """
+    old_tag = old_tag.strip().lower()
+    new_tag = new_tag.strip().lower()
+    if not old_tag or not new_tag:
+        raise ValueError("Tags must not be empty")
+    updated = 0
+    for entry in store.all():
+        if old_tag in entry.tags:
+            entry.tags.remove(old_tag)
+            if new_tag not in entry.tags:
+                entry.tags.append(new_tag)
+            updated += 1
+    return updated
